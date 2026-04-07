@@ -12,7 +12,7 @@
 
 - Ubuntu Linux
 - ROS 2 kilted。 其他版本例如Humble可能要改一些QoS之类的API。
-- 海康相机的 MVS SDK。
+- 大恒相机的 Galaxy SDK。
 
 ## 安装依赖
 
@@ -37,8 +37,20 @@ rosdep install --from-paths src --ignore-src -r -y
 本工程的相机图像采集代码由rm-vision项目修改而来；
 `hik_camera` 依赖以下路径，确保路径里面文件都在就可以。
 
-- 头文件：`/opt/MVS/include`
-- 库文件：`/opt/MVS/lib/64`
+- 头文件：`/opt/Galaxy_camera/inc`
+- 库文件：`/opt/Galaxy_camera/lib`
+
+主要API迁移映射：
+
+- `MV_CC_EnumDevices` -> `GXUpdateDeviceList`
+- `MV_CC_CreateHandle` + `MV_CC_OpenDevice` -> `GXOpenDevice`
+- `MV_CC_StartGrabbing` / `MV_CC_StopGrabbing` -> `GXStreamOn` / `GXStreamOff`
+- `MV_CC_GetImageBuffer` / `MV_CC_FreeImageBuffer` -> `GXGetImage`（用户缓冲区）
+- `MV_CC_GetFloatValue` / `MV_CC_SetFloatValue` -> `GXGetFloat` / `GXSetFloat`
+
+可选参数：
+
+- `camera_index`：打开的相机序号（从 1 开始，默认 1）
 
 ## 编译启动
 先`source`一下ROS的`setup.bash`。然后：
