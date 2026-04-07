@@ -12,6 +12,7 @@
 #include <opencv2/opencv.hpp>
 
 #include <atomic>
+#include <array>
 #include <chrono>
 #include <cstdio>
 #include <cstring>
@@ -53,7 +54,8 @@ public:
       RCLCPP_WARN(this->get_logger(), "Invalid camera_index=%d, fallback to 1", camera_index);
       camera_index = 1;
     }
-    camera_index_content_ = std::to_string(camera_index);
+    std::snprintf(
+      camera_index_content_.data(), camera_index_content_.size(), "%d", camera_index);
     open_param.pszContent = camera_index_content_.data();
 
     status = GXOpenDevice(&open_param, &camera_handle_);
@@ -270,6 +272,7 @@ private:
     param_desc.floating_point_range.resize(1);
     param_desc.floating_point_range[0].from_value = exposure_range.dMin;
     param_desc.floating_point_range[0].to_value = exposure_range.dMax;
+    // Keep exposure as continuous control (step=0) to match SDKs that do not expose valid increment.
     param_desc.floating_point_range[0].step = 0.0;
 
     RCLCPP_INFO(
@@ -346,7 +349,7 @@ private:
   GX_DEV_HANDLE camera_handle_ = nullptr;
   bool sdk_initialized_ = false;
   std::vector<uint8_t> raw_frame_buffer_;
-  std::string camera_index_content_;
+  std::array<char, 16> camera_index_content_{};
 
   std::string camera_name_;
   std::unique_ptr<camera_info_manager::CameraInfoManager> camera_info_manager_;

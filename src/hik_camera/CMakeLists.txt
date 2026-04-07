@@ -30,7 +30,7 @@ include_directories(
 
 add_library(hik_camera_component SHARED src/hik_camera_node.cpp)
 
-# 链接大恒 SDK
+# Link Daheng SDK
 target_link_directories(hik_camera_component PRIVATE /opt/Galaxy_camera/lib)
 
 target_link_libraries(hik_camera_component PUBLIC
