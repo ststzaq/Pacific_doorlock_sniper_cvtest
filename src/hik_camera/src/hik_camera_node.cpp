@@ -33,7 +33,7 @@ public:
     GX_STATUS status = GXInitLib();
     if (status != GX_STATUS_SUCCESS) {
       cameraFailSuggestion(status);
-      throw std::runtime_error("GXInitLib failed");
+      throw std::runtime_error("GXInitLib failed, status=" + std::to_string(status));
     }
     sdk_initialized_ = true;
 
@@ -134,7 +134,13 @@ public:
 
           fail_count_ = 0;
         } else {
-          RCLCPP_WARN(this->get_logger(), "Get frame failed! status: [%x], frame status: [%x]", frame_status, frame_data.nStatus);
+          if (frame_status == GX_STATUS_SUCCESS) {
+            RCLCPP_WARN(
+              this->get_logger(), "Get frame failed! status: [%x], frame status: [%x]",
+              frame_status, frame_data.nStatus);
+          } else {
+            RCLCPP_WARN(this->get_logger(), "Get frame failed! status: [%x]", frame_status);
+          }
           GXStreamOff(camera_handle_);
           GXStreamOn(camera_handle_);
           fail_count_++;
@@ -184,7 +190,10 @@ private:
       return false;
     }
 
-    image_msg_.data.resize(static_cast<size_t>(width * height * 3));
+    const size_t expected_bgr_bytes = static_cast<size_t>(width * height * 3);
+    if (image_msg_.data.size() != expected_bgr_bytes) {
+      image_msg_.data.resize(expected_bgr_bytes);
+    }
     cv::Mat bgr_mat(height, width, CV_8UC3, image_msg_.data.data());
 
     size_t required_input_bytes = 0;
@@ -299,8 +308,8 @@ private:
     param_desc.floating_point_range.resize(1);
     param_desc.floating_point_range[0].from_value = gain_range.dMin;
     param_desc.floating_point_range[0].to_value = gain_range.dMax;
-    // Some Galaxy models report non-positive dInc for continuous gain controls; use step=0 to mark
-    // this ROS parameter as continuously adjustable instead of rejecting valid runtime updates.
+    // Some Galaxy models report non-positive dInc when gain is a continuous control.
+    // In ROS parameter descriptors, step=0 denotes continuous values (not fixed increments).
     param_desc.floating_point_range[0].step = gain_range.dInc > 0.0 ? gain_range.dInc : 0.0;
 
     double gain = this->declare_parameter("gain", gain_current, param_desc);
