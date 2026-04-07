@@ -48,6 +48,10 @@ rosdep install --from-paths src --ignore-src -r -y
 - `MV_CC_GetImageBuffer` / `MV_CC_FreeImageBuffer` -> `GXGetImage`（用户缓冲区）
 - `MV_CC_GetFloatValue` / `MV_CC_SetFloatValue` -> `GXGetFloat` / `GXSetFloat`
 
+可选参数：
+
+- `camera_index`：打开的相机序号（从 1 开始，默认 1）
+
 ## 编译启动
 先`source`一下ROS的`setup.bash`。然后：
 ```bash

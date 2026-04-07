@@ -47,8 +47,13 @@ public:
     GX_OPEN_PARAM open_param{};
     open_param.accessMode = GX_ACCESS_EXCLUSIVE;
     open_param.openMode = GX_OPEN_INDEX;
-    char index[] = "1";
-    open_param.pszContent = index;
+    int camera_index = this->declare_parameter("camera_index", 1);
+    if (camera_index < 1) {
+      RCLCPP_WARN(this->get_logger(), "Invalid camera_index=%d, fallback to 1", camera_index);
+      camera_index = 1;
+    }
+    const std::string camera_index_str = std::to_string(camera_index);
+    open_param.pszContent = const_cast<char *>(camera_index_str.c_str());
 
     status = GXOpenDevice(&open_param, &camera_handle_);
     if (status != GX_STATUS_SUCCESS) {
@@ -263,6 +268,7 @@ private:
     param_desc.floating_point_range.resize(1);
     param_desc.floating_point_range[0].from_value = gain_range.dMin;
     param_desc.floating_point_range[0].to_value = gain_range.dMax;
+    // Some Galaxy models report non-positive dInc for continuous gain controls.
     param_desc.floating_point_range[0].step = gain_range.dInc > 0.0 ? gain_range.dInc : 0.0;
 
     double gain = this->declare_parameter("gain", gain_current, param_desc);
