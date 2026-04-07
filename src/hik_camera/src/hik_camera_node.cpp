@@ -53,9 +53,8 @@ public:
       RCLCPP_WARN(this->get_logger(), "Invalid camera_index=%d, fallback to 1", camera_index);
       camera_index = 1;
     }
-    char camera_index_buf[16] = {0};
-    std::snprintf(camera_index_buf, sizeof(camera_index_buf), "%d", camera_index);
-    open_param.pszContent = camera_index_buf;
+    camera_index_content_ = std::to_string(camera_index);
+    open_param.pszContent = camera_index_content_.data();
 
     status = GXOpenDevice(&open_param, &camera_handle_);
     if (status != GX_STATUS_SUCCESS) {
@@ -186,9 +185,33 @@ private:
     image_msg_.data.resize(static_cast<size_t>(width * height * 3));
     cv::Mat bgr_mat(height, width, CV_8UC3, image_msg_.data.data());
 
+    size_t required_input_bytes = 0;
     switch (frame_data.nPixelFormat) {
       case GX_PIXEL_FORMAT_BGR8:
-        std::memcpy(image_msg_.data.data(), frame_data.pImgBuf, image_msg_.data.size());
+      case GX_PIXEL_FORMAT_RGB8:
+        required_input_bytes = static_cast<size_t>(width * height * 3);
+        break;
+      case GX_PIXEL_FORMAT_MONO8:
+      case GX_PIXEL_FORMAT_BAYER_RG8:
+      case GX_PIXEL_FORMAT_BAYER_GR8:
+      case GX_PIXEL_FORMAT_BAYER_GB8:
+      case GX_PIXEL_FORMAT_BAYER_BG8:
+        required_input_bytes = static_cast<size_t>(width * height);
+        break;
+      default:
+        break;
+    }
+
+    if (required_input_bytes > 0 && static_cast<size_t>(frame_data.nImgSize) < required_input_bytes) {
+      RCLCPP_WARN(
+        this->get_logger(), "Frame buffer too small: got %lld, need %zu", frame_data.nImgSize,
+        required_input_bytes);
+      return false;
+    }
+
+    switch (frame_data.nPixelFormat) {
+      case GX_PIXEL_FORMAT_BGR8:
+        std::memcpy(image_msg_.data.data(), frame_data.pImgBuf, required_input_bytes);
         return true;
       case GX_PIXEL_FORMAT_RGB8: {
         cv::Mat rgb_mat(height, width, CV_8UC3, frame_data.pImgBuf);
@@ -273,7 +296,8 @@ private:
     param_desc.floating_point_range.resize(1);
     param_desc.floating_point_range[0].from_value = gain_range.dMin;
     param_desc.floating_point_range[0].to_value = gain_range.dMax;
-    // Some Galaxy models report non-positive dInc for continuous gain controls.
+    // Some Galaxy models report non-positive dInc for continuous gain controls; use step=0 to mark
+    // this ROS parameter as continuously adjustable instead of rejecting valid runtime updates.
     param_desc.floating_point_range[0].step = gain_range.dInc > 0.0 ? gain_range.dInc : 0.0;
 
     double gain = this->declare_parameter("gain", gain_current, param_desc);
@@ -322,6 +346,7 @@ private:
   GX_DEV_HANDLE camera_handle_ = nullptr;
   bool sdk_initialized_ = false;
   std::vector<uint8_t> raw_frame_buffer_;
+  std::string camera_index_content_;
 
   std::string camera_name_;
   std::unique_ptr<camera_info_manager::CameraInfoManager> camera_info_manager_;
