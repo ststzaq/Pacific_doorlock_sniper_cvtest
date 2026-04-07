@@ -24,14 +24,14 @@ ament_auto_find_build_dependencies()
 
 include_directories(
   include
-  /opt/MVS/include # Install Hik MVS if this directory is missing
+  /opt/Galaxy_camera/inc # Install Daheng Galaxy SDK if this directory is missing
   ${OpenCV_INCLUDE_DIRS}
 )
 
 add_library(hik_camera_component SHARED src/hik_camera_node.cpp)
 
-# 链接Hik SDK
-target_link_directories(hik_camera_component PRIVATE /opt/MVS/lib/64)
+# 链接大恒 SDK
+target_link_directories(hik_camera_component PRIVATE /opt/Galaxy_camera/lib)
 
 target_link_libraries(hik_camera_component PUBLIC
   rclcpp::rclcpp
@@ -41,12 +41,9 @@ target_link_libraries(hik_camera_component PUBLIC
   camera_info_manager::camera_info_manager
   ${OpenCV_LIBRARIES}
   
-  # 海康SDK
-  FormatConversion
-  MediaProcess
-  MvCameraControl
-  MVRender
-  MvUsb3vTL
+  # 大恒SDK
+  gxiapi
+  dximageproc
 )
 # =======================================
 
