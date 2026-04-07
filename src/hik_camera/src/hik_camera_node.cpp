@@ -13,6 +13,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdio>
 #include <cstring>
 #include <memory>
 #include <string>
@@ -52,8 +53,9 @@ public:
       RCLCPP_WARN(this->get_logger(), "Invalid camera_index=%d, fallback to 1", camera_index);
       camera_index = 1;
     }
-    const std::string camera_index_str = std::to_string(camera_index);
-    open_param.pszContent = const_cast<char *>(camera_index_str.c_str());
+    char camera_index_buf[16] = {0};
+    std::snprintf(camera_index_buf, sizeof(camera_index_buf), "%d", camera_index);
+    open_param.pszContent = camera_index_buf;
 
     status = GXOpenDevice(&open_param, &camera_handle_);
     if (status != GX_STATUS_SUCCESS) {
@@ -219,7 +221,10 @@ private:
         return true;
       }
       default:
-        RCLCPP_WARN(this->get_logger(), "Unsupported pixel format: 0x%llx", frame_data.nPixelFormat);
+        RCLCPP_WARN(
+          this->get_logger(),
+          "Unsupported pixel format: 0x%llx. Supported: BGR8, RGB8, MONO8, BAYER_{RG,GR,GB,BG}8.",
+          frame_data.nPixelFormat);
         return false;
     }
   }
